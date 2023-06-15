@@ -3,6 +3,10 @@ from scipy.spatial import distance as dist
 from imutils import perspective
 from imutils import contours
 
+import time
+
+import pandas as pd
+
 #Import Numpy
 #Install Numpy di CMD
 import numpy as np
@@ -22,13 +26,24 @@ def midpoint(ptA, ptB):
 #Activate Cam
 cap = cv2.VideoCapture(1)
 
+cv2.namedWindow('Kamera', cv2.WINDOW_NORMAL)
 
+# Set the desired window size
+window_width = 900
+window_height = 700
+cv2.resizeWindow('Kamera', window_width, window_height)
+
+#Dataframe to store dimensions
+dimensions_data = pd.DataFrame(columns=["Height (CM)", "Length (CM)"])
+
+last_capture_time = 0 
 
 #If the camera is active and the video has started, then run the program below
 while (cap.read()):
         ref,frame = cap.read()
         frame = cv2.resize(frame, None, fx=1, fy=1, interpolation=cv2.INTER_AREA)
         orig = frame[:1080,0:1920]
+        
         
        
         #Grayscale
@@ -57,6 +72,7 @@ while (cap.read()):
             #then perform measurement
             if area < 1000 or area > 120000:
                 continue
+
 
             #Calculating the bounding box of the object contours
             orig = frame.copy()
@@ -112,9 +128,43 @@ while (cap.read()):
         cv2.putText(orig, "object: {}".format(object_count),(10,50),cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255),2, cv2.LINE_AA)  
         cv2.imshow('Kamera',orig)
 
+        if object_count > 0:
+            current_time = time.time()
+
+            #5sec delay to capture again
+            if current_time - last_capture_time >= 5:
+                cv2.imwrite("captured_image.jpg", orig)
+                print("Image captured!")
+                print("Dimensions of the captured object:")
+                print("Height: {:.1f} CM".format(lebar / 25.5))
+                print("Length: {:.1f} CM".format(panjang / 25.5))
+
+                # Calculate the dimensions in centimeters
+                height_cm = lebar / 25.5
+                length_cm = panjang / 25.5
+                # Append the dimensions to the DataFrame
+                dimensions_data = dimensions_data.append({"Height (CM)": height_cm, "Length (CM)": length_cm}, ignore_index=True)
+
+                # Save the DataFrame to an Excel file
+                dimensions_data.to_excel("dimensions.xlsx", index=False)
+
+                last_capture_time = current_time
+
+        #Press ESC to exit
         key = cv2.waitKey(1)
         if key == 27:
             break
+
+        #Press C to capture image    
+        if key == ord('c'):
+            cv2.imwrite("captured_image.jpg", orig)
+            print("Image captured!")
+
+             # Print the dimensions of the captured object
+            print("Dimensions of the captured object:")
+            print("Height: {:.1f} CM".format(lebar / 25.5))
+            print("Length: {:.1f} CM".format(panjang / 25.5))
+
 
 cap.release()
 cv2.destroyAllWindows()
