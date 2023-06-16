@@ -4,7 +4,7 @@ from imutils import perspective
 from imutils import contours
 
 import time
-
+import os
 import pandas as pd
 
 #Import Numpy
@@ -33,10 +33,18 @@ window_width = 900
 window_height = 700
 cv2.resizeWindow('Kamera', window_width, window_height)
 
-#Dataframe to store dimensions
+# Generate a timestamp for the Excel file name
+timestamp = time.strftime("%Y%m%d%H%M%S")
+excel_filename = "dimensions_{}.xlsx".format(timestamp)
+folder_timestamp = time.strftime("%Y%m%d%H%M%S")
+
+#Create an empty DataFrame 
 dimensions_data = pd.DataFrame(columns=["Height (CM)", "Length (CM)"])
 
-last_capture_time = 0 
+last_capture_time = 0  # Initialize last_capture_time outside the loop
+image_counter = 1  # Initialize the image counter
+captured_images = []  # List to store the captured image filenames
+
 
 #If the camera is active and the video has started, then run the program below
 while (cap.read()):
@@ -110,8 +118,8 @@ while (cap.read()):
             panjang_pixel = dist.euclidean((tlblX, tlblY), (trbrX, trbrY))
 
             #If the variable "pixelsPerMetric" has not been initialized, then
-            # Calculate it as the ratio of pixels to the provided metric
-            # In this case, centimeters (CM)
+            #Calculate it as the ratio of pixels to the provided metric
+            #In this case, centimeters (CM)
             if pixelsPerMetric is None:
                 pixelsPerMetric = lebar_pixel
                 pixelsPerMetric = panjang_pixel
@@ -128,13 +136,27 @@ while (cap.read()):
         cv2.putText(orig, "object: {}".format(object_count),(10,50),cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255),2, cv2.LINE_AA)  
         cv2.imshow('Kamera',orig)
 
+        # Create a folder with a unique name based on the timestamp
+        folder_name = "DATA_{}".format(folder_timestamp)
+        # Check if the folder already exists
+        if not os.path.exists(folder_name):
+            # Create the folder
+            os.mkdir(folder_name)
+
+        # Create the paths for the captured image and the Excel file inside the folder
+        filename = "{}/captured_image{}.jpg".format(folder_name, image_counter)
+        excel_filename = "{}/dimensions_{}.xlsx".format(folder_name, timestamp)
+        
+        #Automatic Capture when object detected
         if object_count > 0:
             current_time = time.time()
 
             #5sec delay to capture again
-            if current_time - last_capture_time >= 5:
-                cv2.imwrite("captured_image.jpg", orig)
-                print("Image captured!")
+            if current_time - last_capture_time >= 10:
+
+                #filename = "captured_image{}.jpg".format(image_counter)
+                cv2.imwrite(filename, orig)
+                print("Image captured: {}".format(filename))
                 print("Dimensions of the captured object:")
                 print("Height: {:.1f} CM".format(lebar / 25.5))
                 print("Length: {:.1f} CM".format(panjang / 25.5))
@@ -142,29 +164,62 @@ while (cap.read()):
                 # Calculate the dimensions in centimeters
                 height_cm = lebar / 25.5
                 length_cm = panjang / 25.5
-                # Append the dimensions to the DataFrame
-                dimensions_data = dimensions_data.append({"Height (CM)": height_cm, "Length (CM)": length_cm}, ignore_index=True)
+               
+                # Create a DataFrame for the new dimensions
+                new_data = pd.DataFrame({"Height (CM)": [height_cm], "Length (CM)": [length_cm]})
 
-                # Save the DataFrame to an Excel file
-                dimensions_data.to_excel("dimensions.xlsx", index=False)
+                #Concatenate the new data with the existing dimensions_data
+                dimensions_data = pd.concat([dimensions_data, new_data], ignore_index=True)
 
+                # Save the updated DataFrame to the Excel file
+                #dimensions_data.to_excel(excel_filename, index=False)
+
+                #update last capture time and increment image counter
                 last_capture_time = current_time
+                image_counter += 1
+
+                # Add the captured image filename to the list
+                captured_images.append(filename)
 
         #Press ESC to exit
-        key = cv2.waitKey(1)
+        key = cv2.waitKey(1) 
         if key == 27:
             break
 
         #Press C to capture image    
         if key == ord('c'):
-            cv2.imwrite("captured_image.jpg", orig)
+            cv2.imwrite("{}/captured_image{}.jpg".format(folder_name, image_counter), orig)
             print("Image captured!")
 
-             # Print the dimensions of the captured object
+            # Print the dimensions of the captured object
             print("Dimensions of the captured object:")
             print("Height: {:.1f} CM".format(lebar / 25.5))
             print("Length: {:.1f} CM".format(panjang / 25.5))
 
+            #Create a DataFrame for the new dimensions
+            new_data = pd.DataFrame({"Height (CM)": [height_cm], "Length (CM)": [length_cm]})
+
+            #Concatenate the new data with the existing dimensions_data
+            dimensions_data = pd.concat([dimensions_data, new_data], ignore_index=True)
+
+
+        #Delete previous images and its data when press D
+        if key == ord('d'):
+            if captured_images:
+                # Remove the last captured image and its data
+                previous_image_filename = captured_images.pop()
+                os.remove(previous_image_filename)
+                print("Previous image deleted: {}".format(previous_image_filename))
+                
+                # Remove the previous row of data from the DataFrame
+                dimensions_data = dimensions_data[:-1]
+            
+                print("Previous row deleted.")
+            else:
+                print("No previous image to delete.")  
+      
+# Save the updated DataFrame to the Excel file
+dimensions_data.to_excel(excel_filename, index=False)
 
 cap.release()
 cv2.destroyAllWindows()
