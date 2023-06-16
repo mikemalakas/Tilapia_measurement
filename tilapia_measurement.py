@@ -3,6 +3,7 @@ from scipy.spatial import distance as dist
 from imutils import perspective
 from imutils import contours
 
+import datetime
 import time
 import os
 import pandas as pd
@@ -34,9 +35,9 @@ window_height = 700
 cv2.resizeWindow('Kamera', window_width, window_height)
 
 # Generate a timestamp for the Excel file name
-timestamp = time.strftime("%Y%m%d%H%M%S")
+timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 excel_filename = "dimensions_{}.xlsx".format(timestamp)
-folder_timestamp = time.strftime("%Y%m%d%H%M%S")
+
 
 #Create an empty DataFrame 
 dimensions_data = pd.DataFrame(columns=["Height (CM)", "Length (CM)"])
@@ -114,21 +115,21 @@ while (cap.read()):
                     (255, 0, 255), 2)
 
             #Calculating the Euclidean distance between the center points
-            lebar_pixel = dist.euclidean((tltrX, tltrY), (blbrX, blbrY))
-            panjang_pixel = dist.euclidean((tlblX, tlblY), (trbrX, trbrY))
+            height_pixel = dist.euclidean((tltrX, tltrY), (blbrX, blbrY))
+            length_pixel = dist.euclidean((tlblX, tlblY), (trbrX, trbrY))
 
             #If the variable "pixelsPerMetric" has not been initialized, then
             #Calculate it as the ratio of pixels to the provided metric
             #In this case, centimeters (CM)
             if pixelsPerMetric is None:
-                pixelsPerMetric = lebar_pixel
-                pixelsPerMetric = panjang_pixel
-            lebar = lebar_pixel
-            panjang = panjang_pixel
+                pixelsPerMetric = height_pixel
+                pixelsPerMetric = length_pixel
+            height = height_pixel
+            length = length_pixel
 
             #Depicting the size of an object in the image
-            cv2.putText(orig, "H: {:.1f}CM".format(lebar_pixel/25.5),(int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0,0,255), 2)
-            cv2.putText(orig, "L: {:.1f}CM".format(panjang_pixel/25.5),(int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0,0,255), 2)
+            cv2.putText(orig, "H: {:.1f}CM".format(height_pixel/25.5),(int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0,0,255), 2)
+            cv2.putText(orig, "L: {:.1f}CM".format(length_pixel/25.5),(int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0,0,255), 2)
             #cv2.putText(orig,str(area),(int(x),int(y)),cv2.FONT_HERSHEY_SIMPLEX, 0.6,(0,0,0),2)
             object_count+=1
 
@@ -137,7 +138,7 @@ while (cap.read()):
         cv2.imshow('Kamera',orig)
 
         # Create a folder with a unique name based on the timestamp
-        folder_name = "DATA_{}".format(folder_timestamp)
+        folder_name = "DATA_{}".format(timestamp)
         # Check if the folder already exists
         if not os.path.exists(folder_name):
             # Create the folder
@@ -158,21 +159,18 @@ while (cap.read()):
                 cv2.imwrite(filename, orig)
                 print("Image captured: {}".format(filename))
                 print("Dimensions of the captured object:")
-                print("Height: {:.1f} CM".format(lebar / 25.5))
-                print("Length: {:.1f} CM".format(panjang / 25.5))
+                print("Height: {:.1f} CM".format(height / 25.5))
+                print("Length: {:.1f} CM".format(length / 25.5))
 
                 # Calculate the dimensions in centimeters
-                height_cm = lebar / 25.5
-                length_cm = panjang / 25.5
+                height_cm = height / 25.5
+                length_cm = length / 25.5
                
                 # Create a DataFrame for the new dimensions
                 new_data = pd.DataFrame({"Height (CM)": [height_cm], "Length (CM)": [length_cm]})
 
                 #Concatenate the new data with the existing dimensions_data
                 dimensions_data = pd.concat([dimensions_data, new_data], ignore_index=True)
-
-                # Save the updated DataFrame to the Excel file
-                #dimensions_data.to_excel(excel_filename, index=False)
 
                 #update last capture time and increment image counter
                 last_capture_time = current_time
@@ -193,8 +191,8 @@ while (cap.read()):
 
             # Print the dimensions of the captured object
             print("Dimensions of the captured object:")
-            print("Height: {:.1f} CM".format(lebar / 25.5))
-            print("Length: {:.1f} CM".format(panjang / 25.5))
+            print("Height: {:.1f} CM".format(height / 25.5))
+            print("Length: {:.1f} CM".format(length / 25.5))
 
             #Create a DataFrame for the new dimensions
             new_data = pd.DataFrame({"Height (CM)": [height_cm], "Length (CM)": [length_cm]})
