@@ -7,6 +7,7 @@ import datetime
 import time
 import os
 import pandas as pd
+import threading
 
 #Import Numpy
 #Install Numpy di CMD
@@ -17,6 +18,21 @@ import imutils
 
 #Import OpenCV
 import cv2
+
+import pyrebase
+
+config = { 
+  "apiKey": "AIzaSyBAbFIdnN9K2FrMU9cbg6tuPuyJNCDu_go",
+  "authDomain": "tilapiacam-3614d.firebaseapp.com",
+  "projectId": "tilapiacam-3614d",
+  "databaseURL": "https://tilapiacam-3614d-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  "storageBucket": "tilapiacam-3614d.appspot.com",
+  "messagingSenderId": "752495443902",
+  "appId": "1:752495443902:web:3a7b88c5b5466a708a03ef",
+  "measurementId": "G-Z2STP7NT0F"}
+
+firebase = pyrebase.initialize_app(config)
+db = firebase.database()
 
 #Initializing the variable "midpoint"
 #Determining the midpoint of the object to be measured
@@ -34,18 +50,27 @@ window_width = 900
 window_height = 700
 cv2.resizeWindow('Kamera', window_width, window_height)
 
+# Initialize previous dimensions
+previous_dimensions = None
+
 # Generate a timestamp for the Excel file name
 timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 excel_filename = "dimensions_{}.xlsx".format(timestamp)
 
 
 #Create an empty DataFrame 
-dimensions_data = pd.DataFrame(columns=["Height (CM)", "Length (CM)"])
+dimensions_data = pd.DataFrame(columns=["Height (CM)", "Length (CM)",])
 
 last_capture_time = 0  # Initialize last_capture_time outside the loop
 image_counter = 1  # Initialize the image counter
 captured_images = []  # List to store the captured image filenames
 
+#calculate weight
+def calculate_weight(length):
+    weight = 0.0203 * length**3.0604
+    return weight
+
+weight = 0.0
 
 #If the camera is active and the video has started, then run the program below
 while (cap.read()):
@@ -128,11 +153,14 @@ while (cap.read()):
             length = length_pixel
 
             #Depicting the size of an object in the image
-            cv2.putText(orig, "H: {:.1f}CM".format(height_pixel/25.5),(int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0,0,255), 2)
-            cv2.putText(orig, "L: {:.1f}CM".format(length_pixel/25.5),(int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0,0,255), 2)
+            cv2.putText(orig, "H:{:.1f}CM".format(height_pixel/25.5),(int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0,0,255), 2)
+            cv2.putText(orig, "L:{:.1f}CM".format(length_pixel/25.5),(int(tltrX - 55), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX,0.7, (0,0,255), 2)
             #cv2.putText(orig,str(area),(int(x),int(y)),cv2.FONT_HERSHEY_SIMPLEX, 0.6,(0,0,0),2)
+            weight = calculate_weight(length / 25.5)
+            # Display the weight
+            cv2.putText(orig, "Weight:{:.2f} g".format(weight), (int(tltrX + 65), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             object_count+=1
-
+               
         #Display the number of object detected
         cv2.putText(orig, "object: {}".format(object_count),(10,50),cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255),2, cv2.LINE_AA)  
         cv2.imshow('Kamera',orig)
@@ -161,13 +189,24 @@ while (cap.read()):
                 print("Dimensions of the captured object:")
                 print("Height: {:.1f} CM".format(height / 25.5))
                 print("Length: {:.1f} CM".format(length / 25.5))
+                print("Weight: {:.2f} g".format(weight))
 
                 # Calculate the dimensions in centimeters
                 height_cm = height / 25.5
                 length_cm = length / 25.5
-               
+                weight = calculate_weight(length_cm)
+
+                 # Create data dictionary for firebase--------------------------------------------------------------------------
+                data = {
+                    "height": height_cm,
+                    "length": length_cm,
+                    "weight": weight
+                        }
+                # Send data to the database
+                db.child("Tilapia_dimension").update(data)
+
                 # Create a DataFrame for the new dimensions
-                new_data = pd.DataFrame({"Height (CM)": [height_cm], "Length (CM)": [length_cm]})
+                new_data = pd.DataFrame({"Height (CM)": [height_cm], "Length (CM)": [length_cm], "Weight (g)": [weight] })
 
                 #Concatenate the new data with the existing dimensions_data
                 dimensions_data = pd.concat([dimensions_data, new_data], ignore_index=True)
@@ -177,7 +216,7 @@ while (cap.read()):
                 image_counter += 1
 
                 # Add the captured image filename to the list
-                captured_images.append(filename)
+                captured_images.append(filename)  
 
         #Press ESC to exit
         key = cv2.waitKey(1) 
@@ -193,9 +232,10 @@ while (cap.read()):
             print("Dimensions of the captured object:")
             print("Height: {:.1f} CM".format(height / 25.5))
             print("Length: {:.1f} CM".format(length / 25.5))
+            print("Weight: {:.2f} grams".format(weight))
 
             #Create a DataFrame for the new dimensions
-            new_data = pd.DataFrame({"Height (CM)": [height_cm], "Length (CM)": [length_cm]})
+            new_data = pd.DataFrame({"Height (CM)": [height_cm], "Length (CM)": [length_cm], "Weight (g)": [weight]})
 
             #Concatenate the new data with the existing dimensions_data
             dimensions_data = pd.concat([dimensions_data, new_data], ignore_index=True)
