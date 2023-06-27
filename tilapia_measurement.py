@@ -8,6 +8,7 @@ import time
 import os
 import pandas as pd
 import threading
+from blynklib import Blynk
 
 #Import Numpy
 #Install Numpy di CMD
@@ -33,6 +34,7 @@ config = {
 
 firebase = pyrebase.initialize_app(config)
 db = firebase.database()
+
 
 #Initializing the variable "midpoint"
 #Determining the midpoint of the object to be measured
@@ -78,8 +80,6 @@ while (cap.read()):
         frame = cv2.resize(frame, None, fx=1, fy=1, interpolation=cv2.INTER_AREA)
         orig = frame[:1080,0:1920]
         
-        
-       
         #Grayscale
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (15, 15), 0)
@@ -196,14 +196,14 @@ while (cap.read()):
                 length_cm = length / 25.5
                 weight = calculate_weight(length_cm)
 
-                 # Create data dictionary for firebase--------------------------------------------------------------------------
+                # Create data dictionary for firebase--------------------------------------------------------------------------
                 data = {
-                    "height": height_cm,
-                    "length": length_cm,
-                    "weight": weight
+                    #"height": height_cm,
+                    "length": round(length_cm, 2),
+                    "weight": round(weight, 2)
                         }
                 # Send data to the database
-                db.child("Tilapia_dimension").update(data)
+                db.child("dimension").update(data)
 
                 # Create a DataFrame for the new dimensions
                 new_data = pd.DataFrame({"Height (CM)": [height_cm], "Length (CM)": [length_cm], "Weight (g)": [weight] })
