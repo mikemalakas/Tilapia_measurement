@@ -7,7 +7,6 @@ import datetime
 import time
 import os
 import pandas as pd
-import threading
 from blynklib import Blynk
 
 #Import Numpy
@@ -21,6 +20,7 @@ import imutils
 import cv2
 
 import pyrebase
+
 
 config = { 
   "apiKey": "AIzaSyBAbFIdnN9K2FrMU9cbg6tuPuyJNCDu_go",
@@ -41,16 +41,15 @@ db = firebase.database()
 def midpoint(ptA, ptB):
     return ((ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5)
 
-
 #Activate Cam
 cap = cv2.VideoCapture(1)
 
-cv2.namedWindow('Kamera', cv2.WINDOW_NORMAL)
+cv2.namedWindow('Camera', cv2.WINDOW_NORMAL)
 
 # Set the desired window size
 window_width = 900
 window_height = 700
-cv2.resizeWindow('Kamera', window_width, window_height)
+cv2.resizeWindow('Camera', window_width, window_height)
 
 # Initialize previous dimensions
 previous_dimensions = None
@@ -163,7 +162,7 @@ while (cap.read()):
                
         #Display the number of object detected
         cv2.putText(orig, "object: {}".format(object_count),(10,50),cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255),2, cv2.LINE_AA)  
-        cv2.imshow('Kamera',orig)
+        cv2.imshow('Camera',orig)
 
         # Create a folder with a unique name based on the timestamp
         folder_name = "DATA_{}".format(timestamp)
@@ -196,7 +195,7 @@ while (cap.read()):
                 length_cm = length / 25.5
                 weight = calculate_weight(length_cm)
 
-                # Create data dictionary for firebase--------------------------------------------------------------------------
+                # Create data dictionary for firebase
                 data = {
                     #"height": height_cm,
                     "length": round(length_cm, 2),
