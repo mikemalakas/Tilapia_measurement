@@ -2,9 +2,24 @@ from flask import Flask, render_template, Response
 import cv2
 import numpy as np
 import imutils
+import time
 from scipy.spatial import distance as dist
 from imutils import perspective
 from imutils import contours
+import pyrebase
+
+config = { 
+  "apiKey": "AIzaSyBAbFIdnN9K2FrMU9cbg6tuPuyJNCDu_go",
+  "authDomain": "tilapiacam-3614d.firebaseapp.com",
+  "projectId": "tilapiacam-3614d",
+  "databaseURL": "https://tilapiacam-3614d-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  "storageBucket": "tilapiacam-3614d.appspot.com",
+  "messagingSenderId": "752495443902",
+  "appId": "1:752495443902:web:3a7b88c5b5466a708a03ef",
+  "measurementId": "G-Z2STP7NT0F"}
+
+firebase = pyrebase.initialize_app(config)
+db = firebase.database()
 
 app = Flask('hello')
 cap = cv2.VideoCapture(1)
@@ -19,6 +34,7 @@ def midpoint(ptA, ptB):
     return ((ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5)
 
 def gen_frames():
+    last_capture_time = 0  # Initialize last_capture_time outside the loop
     while True:
         success, frame = cap.read()
         if not success:
@@ -84,6 +100,23 @@ def gen_frames():
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+        #Automatic Capture when object detected
+        if object_count > 0:
+            current_time = time.time() 
+
+            #10sec delay to capture again
+            if current_time - last_capture_time >= 10:   
+                # Create data dictionary for firebase
+                data = {
+                    #"height": height_cm,
+                    "length": round(length_cm, 2),
+                    "weight": round(weight, 2)
+                        }
+                # Send data to the database
+                db.child("dimension").update(data)
+
+                last_capture_time = current_time
 
 @app.route('/video_feed')
 def video_feed():
