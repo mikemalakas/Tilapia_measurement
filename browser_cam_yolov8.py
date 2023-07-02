@@ -70,15 +70,15 @@ def gen_frames():
             d = int(row[5])
             c = class_list[d]
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, str(c), (x1, y1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 0, 0), 2)
+            cv2.putText(frame, str(c), (x1, y1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 0, 0), 1)
 
             object_length = np.sqrt(((x2 - x1) ** 2 + (y2 - y1) ** 2))
             object_cm = object_length / 25.5
             weight = 0.0203 * object_cm ** 3.0604
             length_text = "L: {:.2f}cm".format(object_cm)
             weight_text = "W: {:.2f}g".format(weight)
-            cv2.putText(frame, length_text, (x1 + 90, y1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 0, 0), 2)
-            cv2.putText(frame, weight_text, (x1 + 250, y1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 0, 0), 2)
+            cv2.putText(frame, length_text, (x1 + 90, y1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 0, 0), 1)
+            cv2.putText(frame, weight_text, (x1 + 250, y1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (255, 0, 0), 1)
 
         if object_count > 0:
             current_time = time.time()
